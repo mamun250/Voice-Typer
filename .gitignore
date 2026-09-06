@@ -1,0 +1,40 @@
+﻿# Environment & Secrets
+.env
+*.pem
+*.key
+*.crt
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*.class
+*.so
+
+# Build & Dist
+build/
+dist/
+release/
+final_release/
+*.spec.bak
+
+# Logs & Temporary Files
+*.log
+voice_typer.log
+out.txt
+stdout.txt
+stderr.txt
+
+# Inno Setup Output
+Output/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

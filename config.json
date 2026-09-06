@@ -1,0 +1,9 @@
+﻿{
+  "microphone_device": null,
+  "hotkeys": ["<f8>", "<ctrl>+<shift>+<space>", "<ctrl>+<alt>+v"],
+  "sample_rate": 16000,
+  "channels": 1,
+  "beep_enabled": true,
+  "model": "gemini-3.5-flash-lite",
+  "prompt": "Transcribe spoken audio accurately. If Bengali, transcribe in natural Bengali script. If English, transcribe in English. If code-switching (Banglish), transcribe naturally. Add proper punctuation. Return ONLY the transcribed text without quotes or markdown. If silence or no speech, return EMPTY_SPEECH."
+}
