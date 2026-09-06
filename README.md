@@ -1,4 +1,4 @@
-﻿# 🎙️ Voice Typer (AI-Powered System-Wide Voice Typing)
+# 🎙️ Voice Typer (AI-Powered System-Wide Voice Typing)
 
 A lightweight, powerful Windows desktop utility for fast and accurate voice typing into **any** application (Notepad, MS Word, Google Docs, Browser, Messaging apps, Search bar, etc.) powered by Google's latest **Gemini 3.5 Flash Lite** model.
 
@@ -11,6 +11,7 @@ Supports **Bengali**, **English**, **Hindi**, **Arabic**, and **Universal Auto-D
 - ⚡ **Ultra-Fast & Accurate**: Powered by Gemini 3.5 Flash Lite with ~1.5–2s response latency.
 - 🎯 **System-Wide Universal Typing**: Type directly wherever your mouse cursor is focused.
 - 📱 **Phone as Microphone (QR Code)**: Don't have a PC microphone? Simply scan the QR code from your phone to speak or type directly into your PC!
+- 🔒 **Cloudflare Secure HTTPS Tunnel**: Automatic valid SSL (Zero certificate warnings) so mobile browsers instantly grant microphone permissions.
 - 🌊 **Live Dynamic Audio Waveform**: Real-time visual feedback of speech frequency and amplitude.
 - ⌨️ **Global Hotkeys**:
   - F8 (Toggle recording)

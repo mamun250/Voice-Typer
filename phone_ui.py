@@ -10,7 +10,7 @@ import pyperclip
 def get_asset_path(filename):
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         return Path(sys._MEIPASS) / "assets" / filename
-    return Path(__file__).parent / "assets"
+    return Path(__file__).parent / "assets" / filename
 
 _active_phone_window = None
 
@@ -34,18 +34,20 @@ class PhoneQRDialog(tk.Toplevel):
     def __init__(self, parent=None, phone_server=None):
         super().__init__(parent)
         self.phone_server = phone_server
-        self.https_url = phone_server.get_https_url() if phone_server else "https://localhost:8766"
         self.http_url = phone_server.get_http_url() if phone_server else "http://localhost:8765"
-        self.mode_var = tk.StringVar(value="https")
-        self.current_url = self.https_url
+        self.cloudflare_url = phone_server.get_tunnel_url() if phone_server else None
+
+        self.mode_var = tk.StringVar(value="cloudflare")
+        self.current_url = self.cloudflare_url if self.cloudflare_url else self.http_url
+        self.is_tunnel_connecting = (self.cloudflare_url is None)
 
         self.title("Connect Phone as Microphone")
-        self.geometry("460x600")
+        self.geometry("480x620")
         self.resizable(False, False)
 
         # Center on screen
         self.update_idletasks()
-        w, h = 460, 600
+        w, h = 480, 620
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
         x = (sw - w) // 2
@@ -68,6 +70,36 @@ class PhoneQRDialog(tk.Toplevel):
 
         self._build_ui()
 
+        # If Cloudflare tunnel not started yet, start it now!
+        if self.phone_server:
+            if not self.cloudflare_url:
+                self.phone_server.start_tunnel(
+                    on_url_ready=self._on_tunnel_url_ready,
+                    on_status_change=self._on_tunnel_status_change
+                )
+
+    def _on_tunnel_url_ready(self, url):
+        self.cloudflare_url = url
+        self.is_tunnel_connecting = False
+        self.after(0, self._apply_tunnel_url, url)
+
+    def _apply_tunnel_url(self, url):
+        if self.mode_var.get() == "cloudflare":
+            self.current_url = url
+            self.entry_url.configure(state="normal")
+            self.entry_url.delete(0, "end")
+            self.entry_url.insert(0, self.current_url)
+            self.entry_url.configure(state="readonly")
+            self._update_qr_image()
+            self._update_guide_text()
+            self.lbl_status.configure(text="🟢 Cloudflare HTTPS Active (Valid SSL)", foreground="#15803d")
+
+    def _on_tunnel_status_change(self, status):
+        def _update():
+            if self.is_tunnel_connecting and self.mode_var.get() == "cloudflare":
+                self.lbl_status.configure(text=f"⏳ {status}", foreground="#2563eb")
+        self.after(0, _update)
+
     def _build_ui(self):
         container = ttk.Frame(self, padding=(18, 12, 18, 12))
         container.pack(fill="both", expand=True)
@@ -82,7 +114,7 @@ class PhoneQRDialog(tk.Toplevel):
 
         lbl_subtitle = ttk.Label(
             container,
-            text="Scan QR code with your phone camera on the same Wi-Fi.",
+            text="Scan QR code with your phone camera to connect instantly.",
             font=("Segoe UI", 9),
             foreground="#555555"
         )
@@ -92,21 +124,21 @@ class PhoneQRDialog(tk.Toplevel):
         mode_frame = ttk.Frame(container)
         mode_frame.pack(anchor="center", pady=(0, 10))
 
-        self.btn_mode_https = ttk.Button(
+        self.btn_mode_cf = ttk.Button(
             mode_frame,
-            text="🔒 HTTPS Mode (Mic Permission)",
-            command=lambda: self._set_mode("https"),
-            width=26
+            text="⚡ Cloudflare HTTPS (Zero Warnings)",
+            command=lambda: self._set_mode("cloudflare"),
+            width=30
         )
-        self.btn_mode_https.pack(side="left", padx=(0, 6))
+        self.btn_mode_cf.pack(side="left", padx=(0, 6))
 
-        self.btn_mode_http = ttk.Button(
+        self.btn_mode_wifi = ttk.Button(
             mode_frame,
-            text="🌐 HTTP Mode (Fast / Direct)",
-            command=lambda: self._set_mode("http"),
-            width=24
+            text="🌐 Local Wi-Fi (LAN)",
+            command=lambda: self._set_mode("wifi"),
+            width=20
         )
-        self.btn_mode_http.pack(side="left")
+        self.btn_mode_wifi.pack(side="left")
 
         # QR Code Frame
         qr_frame = ttk.Frame(container, relief="solid", borderwidth=1)
@@ -140,7 +172,9 @@ class PhoneQRDialog(tk.Toplevel):
         bottom_row = ttk.Frame(container)
         bottom_row.pack(fill="x", side="bottom")
 
-        self.lbl_status = ttk.Label(bottom_row, text="🟢 Server Active on 192.168.0.177", foreground="#15803d", font=("Segoe UI", 8, "bold"))
+        initial_status = "🟢 Cloudflare HTTPS Active (Valid SSL)" if self.cloudflare_url else "⏳ Connecting Cloudflare Secure Tunnel..."
+        initial_color = "#15803d" if self.cloudflare_url else "#2563eb"
+        self.lbl_status = ttk.Label(bottom_row, text=initial_status, foreground=initial_color, font=("Segoe UI", 8, "bold"))
         self.lbl_status.pack(side="left")
 
         btn_close = ttk.Button(bottom_row, text="Close", width=10, command=self.destroy)
@@ -151,10 +185,16 @@ class PhoneQRDialog(tk.Toplevel):
 
     def _set_mode(self, mode):
         self.mode_var.set(mode)
-        if mode == "https":
-            self.current_url = self.https_url
+        if mode == "cloudflare":
+            if self.cloudflare_url:
+                self.current_url = self.cloudflare_url
+                self.lbl_status.configure(text="🟢 Cloudflare HTTPS Active (Valid SSL)", foreground="#15803d")
+            else:
+                self.current_url = self.http_url
+                self.lbl_status.configure(text="⏳ Connecting Cloudflare Secure Tunnel...", foreground="#2563eb")
         else:
             self.current_url = self.http_url
+            self.lbl_status.configure(text="🌐 Local Wi-Fi Active", foreground="#15803d")
 
         self.entry_url.configure(state="normal")
         self.entry_url.delete(0, "end")
@@ -165,18 +205,17 @@ class PhoneQRDialog(tk.Toplevel):
         self._update_guide_text()
 
     def _update_guide_text(self):
-        if self.mode_var.get() == "https":
+        if self.mode_var.get() == "cloudflare":
             guide = (
-                "1. Connect Phone & PC to the same Wi-Fi.\n"
-                "2. Scan this QR code with Phone Camera.\n"
-                "3. Tap 'Tap to Speak' and allow Microphone permission!\n"
-                "   (If prompted 'Connection not private', tap Advanced -> Proceed)"
+                "1. Scan this QR code with Phone Camera (Wi-Fi or Mobile Data).\n"
+                "2. Page opens with valid HTTPS green lock—no scary warnings!\n"
+                "3. Tap the red Mic button, allow microphone, and speak!"
             )
         else:
             guide = (
-                "1. Connect Phone & PC to the same Wi-Fi.\n"
-                "2. Scan this QR code with Phone Camera (Opens instantly!).\n"
-                "3. Type or use phone keyboard mic & tap 'Send to PC'!"
+                "1. Connect Phone & PC to the same Wi-Fi network.\n"
+                "2. Scan this QR code with Phone Camera (Opens instantly).\n"
+                "3. Type manually or use keyboard dictation and tap 'Send to PC'!"
             )
         self.lbl_guide.configure(text=guide)
 
@@ -197,5 +236,7 @@ class PhoneQRDialog(tk.Toplevel):
 
     def _copy_link(self):
         pyperclip.copy(self.current_url)
+        old_text = self.lbl_status.cget("text")
+        old_color = self.lbl_status.cget("foreground")
         self.lbl_status.configure(text="✓ Link copied to clipboard!", foreground="#2563eb")
-        self.after(2500, lambda: self.lbl_status.configure(text="🟢 Server Active on 192.168.0.177", foreground="#15803d"))
+        self.after(2500, lambda: self.lbl_status.configure(text=old_text, foreground=old_color))

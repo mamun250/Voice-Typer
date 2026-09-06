@@ -11,6 +11,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import ipaddress
 import datetime
+from tunnel import TunnelManager
 
 if getattr(sys, 'frozen', False):
     APP_DIR = Path(sys.executable).parent.resolve()
@@ -800,9 +801,37 @@ class PhoneServer:
             logging.warning(f"Could not start HTTPS server: {e}")
 
         self.is_running = True
+        self.tunnel_manager = TunnelManager(local_port=self.http_port)
+        try:
+            self.start_tunnel()
+        except Exception as e:
+            logging.warning(f"Could not pre-warm tunnel: {e}")
+
+    def start_tunnel(self, on_url_ready=None, on_status_change=None):
+        if not self.tunnel_manager:
+            self.tunnel_manager = TunnelManager(local_port=self.http_port)
+        if on_url_ready:
+            self.tunnel_manager.on_url_ready = on_url_ready
+        if on_status_change:
+            self.tunnel_manager.on_status_change = on_status_change
+        self.tunnel_manager.start()
+
+    def stop_tunnel(self):
+        if self.tunnel_manager:
+            self.tunnel_manager.stop()
+
+    def get_tunnel_url(self):
+        if self.tunnel_manager:
+            return self.tunnel_manager.get_url()
+        return None
 
     def stop(self):
         self.is_running = False
+        if self.tunnel_manager:
+            try:
+                self.tunnel_manager.stop()
+            except Exception:
+                pass
         if self.http_server:
             try:
                 self.http_server.shutdown()
@@ -821,3 +850,4 @@ class PhoneServer:
 
     def get_https_url(self):
         return f"https://{self.local_ip}:{self.https_port}"
+

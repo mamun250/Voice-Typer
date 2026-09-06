@@ -1,4 +1,4 @@
-﻿# Environment & Secrets
+# Environment & Secrets
 .env
 *.pem
 *.key
@@ -22,6 +22,7 @@ dist/
 release/
 final_release/
 *.spec.bak
+assets/cloudflared.exe
 
 # Logs & Temporary Files
 *.log

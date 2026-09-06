@@ -25,6 +25,7 @@ cmd = [
     "--collect-all=cryptography",
     "--hidden-import=phone_server",
     "--hidden-import=phone_ui",
+    "--hidden-import=tunnel",
     "--clean",
     "app.py"
 ]
