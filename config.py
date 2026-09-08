@@ -39,7 +39,8 @@ DEFAULT_CONFIG = {
     "beep_enabled": True,
     "model": "gemini-3.5-flash-lite",
     "sample_rate": 16000,
-    "channels": 1
+    "channels": 1,
+    "phone_password": ""
 }
 
 def load_config() -> dict:

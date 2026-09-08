@@ -6,6 +6,7 @@ import socket
 import ssl
 import threading
 import logging
+import secrets
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -78,13 +79,13 @@ def generate_self_signed_cert(cert_path: Path, key_path: Path, local_ip: str):
         logging.error(f"Failed to generate SSL cert: {e}")
         return False
 
-# Exact reproduction of user's requested Retro-Minimalist UI
+# Full Bi-directional Synchronized UI
 MOBILE_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Voice Typer</title>
+<title>Voice Typer Companion</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -102,24 +103,25 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px 16px;
+  padding: 16px 14px;
   user-select: none;
 }
 
 /* Status Pill */
 .top-status {
   position: absolute;
-  top: 16px;
+  top: 14px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 5px 14px;
   background: #ffffff;
   border: 1.5px solid #222222;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   box-shadow: 2px 2px 0px #222222;
+  z-index: 10;
 }
 .dot-status {
   width: 8px;
@@ -136,12 +138,12 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 24px;
-  margin-bottom: 8px;
+  margin-top: 26px;
+  margin-bottom: 6px;
 }
 .mic-btn {
-  width: 120px;
-  height: 120px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   background: #f83b3b;
   border: none;
@@ -167,8 +169,8 @@ body {
   100% { transform: scale(1); }
 }
 .mic-icon-svg {
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
   stroke: #ffffff;
   stroke-width: 2.2;
   stroke-linecap: round;
@@ -180,15 +182,15 @@ body {
 .waveform-container {
   width: 100%;
   max-width: 340px;
-  height: 72px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 12px 0;
+  margin: 6px 0;
 }
 #waveCanvas {
   width: 320px;
-  height: 64px;
+  height: 54px;
 }
 
 /* 3. Retro Window Card */
@@ -204,16 +206,22 @@ body {
   flex-direction: column;
 }
 .window-header {
-  height: 38px;
+  height: 42px;
   border-bottom: 2px solid #222222;
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: #f5f3ef;
+}
+.window-dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 .circle-dot {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   border: 1.5px solid #222222;
 }
@@ -221,29 +229,119 @@ body {
 .dot-green { background: #27c93f; }
 .dot-yellow { background: #ffbd2e; }
 
+/* Live Mode Toggle */
+.live-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #10b981;
+  letter-spacing: 0.3px;
+  transition: color 0.2s;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #e5e7eb;
+  border: 1.5px solid #222222;
+  transition: 0.2s;
+  border-radius: 999px;
+  box-shadow: 1px 1px 0px #222222;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  border: 1.5px solid #222222;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: #10b981;
+}
+input:checked + .slider:before {
+  transform: translateX(16px);
+  background-color: #ffffff;
+}
+
 .window-body {
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
 }
 textarea {
   width: 100%;
-  height: 140px;
+  height: 125px;
   border: none;
   background: transparent;
   outline: none;
   resize: none;
   font-family: "Courier New", Courier, monospace, serif;
-  font-size: 1.1rem;
-  line-height: 1.5;
+  font-size: 1.05rem;
+  line-height: 1.45;
   color: #111111;
   user-select: text;
 }
 textarea::placeholder {
-  color: #222222;
-  opacity: 0.85;
+  color: #333333;
+  opacity: 0.8;
   font-family: inherit;
   font-weight: 500;
+}
+
+/* Tactile Navigation Toolbar */
+.nav-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1.5px dashed #cccccc;
+}
+.nav-btn {
+  flex: 1;
+  height: 35px;
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0px #222222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  color: #111111;
+  user-select: none;
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+.nav-btn:active {
+  transform: translate(1.5px, 1.5px);
+  box-shadow: 0.5px 0.5px 0px #222222 !important;
+}
+.nav-btn.special {
+  background: #f3f4f6;
+  font-size: 0.85rem;
 }
 
 /* Action Buttons */
@@ -252,7 +350,7 @@ textarea::placeholder {
   gap: 10px;
   width: 100%;
   max-width: 340px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 .btn {
   padding: 12px 18px;
@@ -287,15 +385,15 @@ textarea::placeholder {
 /* Toast */
 .toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%) translateY(100px);
   background: #222222;
   color: white;
-  padding: 10px 22px;
+  padding: 9px 20px;
   border-radius: 9999px;
   border: 2px solid #ffffff;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -310,36 +408,89 @@ textarea::placeholder {
   opacity: 1;
 }
 
-/* HTTPS Notice Banner */
-.notice {
-  background: #fffbeb;
-  border: 1.5px solid #222222;
-  box-shadow: 3px 3px 0px #222222;
-  color: #1a1a1a;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-  margin-bottom: 12px;
-  max-width: 340px;
+/* Security Lock Screen Overlay */
+.lock-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(26, 26, 26, 0.65);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.lock-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.lock-card {
+  background: #fcfbf8;
+  border: 2.5px solid #222222;
+  border-radius: 18px;
+  box-shadow: 6px 6px 0px #222222;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   text-align: center;
 }
-.notice a {
-  color: #f83b3b;
+.lock-icon {
+  font-size: 2.5rem;
+}
+.lock-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #111111;
+}
+.lock-subtitle {
+  font-size: 0.82rem;
+  color: #555555;
+  line-height: 1.4;
+}
+.lock-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #222222;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0px #222222;
+  font-size: 1.15rem;
+  text-align: center;
+  letter-spacing: 2px;
+  outline: none;
+  background: #ffffff;
+}
+.lock-input:focus {
+  border-color: #10b981;
+}
+.lock-error {
+  font-size: 0.78rem;
+  color: #ef4444;
   font-weight: 700;
-  text-decoration: underline;
+  display: none;
+}
+.shake {
+  animation: shake 0.35s ease-in-out;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
 }
 </style>
 </head>
 <body>
 
+<!-- Status Pill -->
 <div class="top-status">
   <div class="dot-status" id="statusDot"></div>
   <span id="statusText">Connected to PC</span>
-</div>
-
-<div class="notice" id="httpNotice" style="display: none;">
-  🔒 <strong>Microphone requires HTTPS:</strong><br>
-  <a href="" id="httpsLink">Tap here to switch to HTTPS mode</a>
 </div>
 
 <!-- 1. Red Mic Button -->
@@ -356,32 +507,62 @@ textarea::placeholder {
 
 <!-- 2. Audio Waveform Canvas -->
 <div class="waveform-container">
-  <canvas id="waveCanvas" width="320" height="64"></canvas>
+  <canvas id="waveCanvas" width="320" height="54"></canvas>
 </div>
 
-<!-- 3. Retro Window Box -->
+<!-- 3. Retro Window Card -->
 <div class="window-card">
   <div class="window-header">
-    <div class="circle-dot dot-red"></div>
-    <div class="circle-dot dot-green"></div>
-    <div class="circle-dot dot-yellow"></div>
+    <div class="window-dots">
+      <div class="circle-dot dot-red"></div>
+      <div class="circle-dot dot-yellow"></div>
+      <div class="circle-dot dot-green"></div>
+    </div>
+    <div class="live-toggle-wrapper">
+      <span class="live-label" id="liveLabel">⚡ LIVE SYNC ON</span>
+      <label class="switch">
+        <input type="checkbox" id="liveModeToggle" checked onchange="toggleLiveMode(this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
   </div>
   <div class="window-body">
     <textarea id="textBox" placeholder="Type Here......"></textarea>
+    <!-- Tactile Cursor & Key Navigation -->
+    <div class="nav-toolbar">
+      <button type="button" class="nav-btn" onmousedown="event.preventDefault()" onclick="sendNavKey('left')" title="Left">◀</button>
+      <button type="button" class="nav-btn" onmousedown="event.preventDefault()" onclick="sendNavKey('up')" title="Up">▲</button>
+      <button type="button" class="nav-btn" onmousedown="event.preventDefault()" onclick="sendNavKey('down')" title="Down">▼</button>
+      <button type="button" class="nav-btn" onmousedown="event.preventDefault()" onclick="sendNavKey('right')" title="Right">▶</button>
+      <button type="button" class="nav-btn special" onmousedown="event.preventDefault()" onclick="sendNavKey('backspace')" title="Backspace">⌫</button>
+      <button type="button" class="nav-btn special" onmousedown="event.preventDefault()" onclick="sendNavKey('enter')" title="Enter">↵</button>
+    </div>
   </div>
 </div>
 
 <!-- Action Buttons -->
 <div class="btn-row">
-  <button class="btn btn-send" onclick="sendText()">
+  <button type="button" class="btn btn-send" id="btnSend" onclick="sendText()">
     <span>⚡ Send to PC ↵</span>
   </button>
-  <button class="btn btn-clear" onclick="clearText()">Clear</button>
+  <button type="button" class="btn btn-clear" onclick="clearText()">Clear</button>
 </div>
 
 <div class="toast" id="toast">
   <span id="toastIcon">✓</span>
   <span id="toastMsg">Pasted into PC!</span>
+</div>
+
+<!-- Password Lock Screen Overlay -->
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">Password Protected</div>
+    <div class="lock-subtitle">Enter the password configured on your PC to connect and type.</div>
+    <input type="password" id="authPwd" class="lock-input" placeholder="Enter Password" onkeydown="if(event.key==='Enter') submitPassword()">
+    <div class="lock-error" id="lockError">Incorrect Password</div>
+    <button class="btn btn-send" style="width: 100%;" onclick="submitPassword()">Unlock & Connect 🔓</button>
+  </div>
 </div>
 
 <script>
@@ -392,6 +573,9 @@ let audioCtx = null;
 let analyser = null;
 let dataArray = null;
 let animFrameId = null;
+
+let liveMode = true;
+let authToken = localStorage.getItem('vt_auth_token') || '';
 
 const canvas = document.getElementById('waveCanvas');
 const ctx = canvas.getContext('2d');
@@ -413,28 +597,22 @@ function drawWaveform(time) {
   }
 
   for (let i = 0; i < numBars; i++) {
-    // Symmetrical bell-curve envelope for tapering at edges
     const norm = i / (numBars - 1);
     const envelope = Math.sin(norm * Math.PI);
 
-    let h = 3; // minimum height
+    let h = 3;
     if (isRecording && dataArray) {
-      // Map bar index to frequency bin
       const bin = Math.floor((i / numBars) * (dataArray.length * 0.7));
       const val = dataArray[bin] || 0;
-      h = Math.max(3, (val / 255) * 28 * envelope + (Math.sin(time * 0.01 + i * 0.3) * 2));
+      h = Math.max(3, (val / 255) * 26 * envelope + (Math.sin(time * 0.01 + i * 0.3) * 2));
     } else {
-      // Idle resting wave: gentle breathing sine curve matching screenshot
-      const baseH = (Math.pow(envelope, 1.8) * 20);
+      const baseH = (Math.pow(envelope, 1.8) * 18);
       const breath = Math.sin(time * 0.003 + i * 0.2) * 2;
       h = Math.max(2, baseH + breath);
     }
 
     const x = i * (barWidth + barGap);
     const yTop = centerY - h;
-    const yBottom = centerY + h;
-
-    // Draw vertical bar with rounded tips
     ctx.beginPath();
     ctx.roundRect(x, yTop, barWidth, h * 2, barWidth / 2);
     ctx.fill();
@@ -449,28 +627,268 @@ function showToast(msg, isErr=false) {
   document.getElementById('toastMsg').innerText = msg;
   document.getElementById('toastIcon').innerText = isErr ? '⚠️' : '✓';
   toast.classList.add('show');
-  if (navigator.vibrate) navigator.vibrate(30);
-  setTimeout(() => toast.classList.remove('show'), 2200);
+  if (navigator.vibrate) navigator.vibrate(25);
+  setTimeout(() => toast.classList.remove('show'), 2000);
 }
+
+function getAuthHeaders(extra = {}) {
+  const headers = Object.assign({}, extra);
+  if (authToken) {
+    headers['Authorization'] = 'Bearer ' + authToken;
+    headers['X-Auth-Token'] = authToken;
+  }
+  return headers;
+}
+
+// ----------------------------------------------------
+// Synchronized Text Editing (Both Mobile & PC in sync)
+// ----------------------------------------------------
+let syncPending = false;
+let syncRunning = false;
+let syncTimer = null;
+
+function scheduleSync() {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncWithPC, 35);
+}
+
+async function syncWithPC() {
+  if (!liveMode) return;
+  if (syncRunning) {
+    syncPending = true;
+    return;
+  }
+  syncRunning = true;
+  syncPending = false;
+
+  const text = textBox.value;
+  const cursor = textBox.selectionStart;
+
+  try {
+    const res = await fetch('/api/sync_text', {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ text: text, cursor: cursor })
+    });
+    if (res.status === 401) {
+      document.getElementById('lockOverlay').classList.add('active');
+    }
+  } catch (err) {
+    console.warn('Sync failed:', err);
+  } finally {
+    syncRunning = false;
+    if (syncPending) {
+      syncWithPC();
+    }
+  }
+}
+
+// 1. Caret repositioning events on mobile & desktop (Standard W3C selectionchange)
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === textBox) {
+    scheduleSync();
+  }
+});
+
+// 2. Direct touch / pointer events on textbox for immediate mobile response
+textBox.addEventListener('pointerup', scheduleSync);
+textBox.addEventListener('touchend', () => setTimeout(scheduleSync, 40));
+textBox.addEventListener('input', scheduleSync);
+textBox.addEventListener('click', scheduleSync);
+textBox.addEventListener('keyup', (e) => {
+  scheduleSync();
+});
+textBox.addEventListener('select', scheduleSync);
 
 function clearText() {
   textBox.value = '';
+  textBox.setSelectionRange(0, 0);
+  fetch('/api/reset_sync', {
+    method: 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' })
+  }).catch(()=>{});
+  showToast('Phone text cleared!');
 }
 
-function getHttpsUrl() {
-  return 'https://' + location.hostname + ':{{HTTPS_PORT}}';
+function getPrevCluster(text, pos) {
+  if (pos <= 0) return 0;
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('bn', { granularity: 'grapheme' });
+    let last = 0;
+    for (const s of seg.segment(text)) {
+      if (s.index >= pos) break;
+      last = s.index;
+    }
+    return last;
+  }
+  return Math.max(0, pos - 1);
 }
 
-function checkProtocol() {
-  const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  if (!isSecure && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
-    const notice = document.getElementById('httpNotice');
-    const link = document.getElementById('httpsLink');
-    link.href = getHttpsUrl();
-    notice.style.display = 'block';
+function getNextCluster(text, pos) {
+  if (pos >= text.length) return text.length;
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    const seg = new Intl.Segmenter('bn', { granularity: 'grapheme' });
+    for (const s of seg.segment(text)) {
+      if (s.index > pos) return s.index;
+    }
+    return text.length;
+  }
+  return Math.min(text.length, pos + 1);
+}
+
+// Tactile Navigation Key
+function sendNavKey(key) {
+  if (navigator.vibrate) navigator.vibrate(15);
+  textBox.focus();
+  const start = textBox.selectionStart;
+  const end = textBox.selectionEnd;
+
+  if (key === 'left') {
+    const newPos = getPrevCluster(textBox.value, start);
+    textBox.setSelectionRange(newPos, newPos);
+    scheduleSync();
+  } else if (key === 'right') {
+    const newPos = getNextCluster(textBox.value, start);
+    textBox.setSelectionRange(newPos, newPos);
+    scheduleSync();
+  } else if (key === 'up' || key === 'down') {
+    fetch('/api/send_key', {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ key: key, count: 1 })
+    }).catch(()=>{});
+  } else if (key === 'backspace') {
+    if (start !== end) {
+      textBox.value = textBox.value.slice(0, start) + textBox.value.slice(end);
+      textBox.setSelectionRange(start, start);
+      scheduleSync();
+    } else if (start > 0) {
+      const prev = getPrevCluster(textBox.value, start);
+      textBox.value = textBox.value.slice(0, prev) + textBox.value.slice(start);
+      textBox.setSelectionRange(prev, prev);
+      scheduleSync();
+    } else {
+      fetch('/api/send_key', {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ key: 'backspace', count: 1 })
+      }).catch(()=>{});
+    }
+  } else if (key === 'enter') {
+    textBox.value = textBox.value.slice(0, start) + '\\n' + textBox.value.slice(start);
+    textBox.setSelectionRange(start + 1, start + 1);
+    scheduleSync();
   }
 }
-checkProtocol();
+
+// Live Mode Toggle
+function toggleLiveMode(enabled) {
+  liveMode = enabled;
+  const label = document.getElementById('liveLabel');
+  const btnSend = document.getElementById('btnSend');
+
+  if (liveMode) {
+    label.innerText = '⚡ LIVE SYNC ON';
+    label.style.color = '#10b981';
+    btnSend.style.opacity = '0.7';
+    if (!textBox.value) {
+      fetch('/api/reset_sync', {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' })
+      }).catch(()=>{});
+    } else {
+      scheduleSync();
+    }
+    showToast('Live Sync ON (Mirrored on PC)');
+  } else {
+    label.innerText = '⚡ Live Mode';
+    label.style.color = '#444444';
+    btnSend.style.opacity = '1.0';
+    showToast('Batch Mode (Use Send to PC)');
+  }
+}
+
+// Send text from box to PC (Batch Mode Force)
+function sendText() {
+  const text = textBox.value;
+  fetch('/api/paste_text', {
+    method: 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ text: text })
+  })
+  .then(res => {
+    if (res.status === 401) {
+      document.getElementById('lockOverlay').classList.add('active');
+      throw new Error('Password required');
+    }
+    return res.json();
+  })
+  .then(() => {
+    showToast('Pasted to PC!');
+  })
+  .catch(err => {
+    if (err.message !== 'Password required') {
+      showToast('Failed to reach PC', true);
+    }
+  });
+}
+
+// Check if PC requires password
+async function checkAuthStatus() {
+  try {
+    const res = await fetch('/api/auth/status', {
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (data.password_required && !data.authenticated) {
+      document.getElementById('lockOverlay').classList.add('active');
+    } else {
+      document.getElementById('lockOverlay').classList.remove('active');
+    }
+  } catch (err) {
+    console.warn("Auth check failed:", err);
+  }
+}
+
+async function submitPassword() {
+  const pwdInput = document.getElementById('authPwd');
+  const errEl = document.getElementById('lockError');
+  const pwd = pwdInput.value.trim();
+  errEl.style.display = 'none';
+
+  if (!pwd) {
+    errEl.innerText = 'Please enter a password';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      authToken = data.token;
+      localStorage.setItem('vt_auth_token', authToken);
+      document.getElementById('lockOverlay').classList.remove('active');
+      pwdInput.value = '';
+      showToast('Unlocked & Connected!');
+      checkConnection();
+      syncWithPC();
+    } else {
+      errEl.innerText = data.message || 'Incorrect password!';
+      errEl.style.display = 'block';
+      pwdInput.classList.add('shake');
+      setTimeout(() => pwdInput.classList.remove('shake'), 400);
+    }
+  } catch (e) {
+    errEl.innerText = 'Connection error. Try again.';
+    errEl.style.display = 'block';
+  }
+}
 
 // Microphone recording
 async function toggleMic() {
@@ -482,16 +900,10 @@ async function toggleMic() {
 }
 
 async function startRecording() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    window.location.href = getHttpsUrl();
-    return;
-  }
-
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioChunks = [];
 
-    // Set up Web Audio API Analyser for real-time waveform animation
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
@@ -533,16 +945,15 @@ async function startRecording() {
     isRecording = true;
     document.getElementById('micBtn').classList.add('recording');
 
-    // Trigger start sound on PC
     fetch('/api/sound', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ sound: 'start' })
     }).catch(()=>{});
 
   } catch (err) {
     document.getElementById('micBtn').classList.remove('recording');
-    showToast('Permission needed: ' + err.message, true);
+    showToast('Mic permission needed: ' + err.message, true);
   }
 }
 
@@ -552,10 +963,9 @@ function stopRecording() {
     document.getElementById('micBtn').classList.remove('recording');
     mediaRecorder.stop();
 
-    // Trigger stop sound on PC
     fetch('/api/sound', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ sound: 'stop' })
     }).catch(()=>{});
   }
@@ -566,48 +976,21 @@ async function uploadAudio(blob) {
   try {
     const res = await fetch('/api/transcribe_audio', {
       method: 'POST',
-      headers: {
+      headers: getAuthHeaders({
         'Content-Type': blob.type || 'audio/webm'
-      },
+      }),
       body: blob
     });
     const data = await res.json();
 
     if (data.status === 'ok' && data.text) {
-      const text = data.text.trim();
-      if (textBox.value.trim()) {
-        textBox.value += ' ' + text;
-      } else {
-        textBox.value = text;
-      }
-      showToast('Pasted to PC!');
+      showToast('Transcribed to PC!');
     } else {
       showToast('No speech detected', true);
     }
   } catch (err) {
     showToast('Upload error', true);
   }
-}
-
-// Send text from box to PC
-function sendText() {
-  const text = textBox.value.trim();
-  if (!text) {
-    showToast('Type or speak something first', true);
-    return;
-  }
-  fetch('/api/paste_text', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text })
-  })
-  .then(res => res.json())
-  .then(data => {
-    showToast('Pasted to PC cursor!');
-  })
-  .catch(() => {
-    showToast('Failed to reach PC', true);
-  });
 }
 
 // Heartbeat
@@ -625,6 +1008,7 @@ function checkConnection() {
 }
 setInterval(checkConnection, 8000);
 checkConnection();
+checkAuthStatus();
 </script>
 </body>
 </html>
@@ -648,7 +1032,7 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Auth-Token')
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Connection', 'close')
         self.end_headers()
@@ -659,14 +1043,21 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Auth-Token')
         self.send_header('Connection', 'close')
         self.end_headers()
         self.close_connection = True
 
+    def _is_authenticated(self) -> bool:
+        server = getattr(self.server, 'app_server', None)
+        if not server:
+            return True
+        return server.check_auth_header(self.headers)
+
     def do_GET(self):
+        server = getattr(self.server, 'app_server', None)
+
         if self.path == '/' or self.path.startswith('/index'):
-            server = getattr(self.server, 'app_server', None)
             https_p = str(server.https_port) if server else "8766"
             http_p = str(server.http_port) if server else "8765"
             html = MOBILE_HTML.replace('{{HTTPS_PORT}}', https_p).replace('{{HTTP_PORT}}', http_p)
@@ -685,14 +1076,65 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
                 'pc_name': socket.gethostname(),
                 'active': True
             })
+        elif self.path == '/api/auth/status':
+            has_pwd = bool(server and server.password)
+            authed = self._is_authenticated()
+            self._send_json(200, {
+                'status': 'ok',
+                'password_required': has_pwd,
+                'authenticated': authed
+            })
         else:
             self.send_error(404, "Not Found")
 
     def do_POST(self):
         content_length = int(self.headers.get('Content-Length', 0))
-        server = self.server.app_server
+        server = getattr(self.server, 'app_server', None)
+        if not server:
+            self.send_error(500, "Server Error")
+            return
 
-        if self.path == '/api/paste_text':
+        # 1. Login endpoint (Open)
+        if self.path == '/api/auth/login':
+            body_bytes = self.rfile.read(content_length)
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+                pwd = data.get('password', '').strip()
+                if not server.password or pwd == server.password.strip():
+                    token = server.generate_auth_token()
+                    self._send_json(200, {'status': 'ok', 'token': token})
+                else:
+                    self._send_json(401, {'status': 'error', 'message': 'Incorrect Password!'})
+            except Exception as e:
+                self._send_json(400, {'status': 'error', 'message': str(e)})
+            return
+
+        # 2. Protected endpoints check
+        if not self._is_authenticated():
+            self._send_json(401, {'status': 'error', 'message': 'Password required / Unauthorized'})
+            return
+
+        # 3. Synchronize full text & cursor (Full bi-directional editing)
+        if self.path == '/api/sync_text':
+            body_bytes = self.rfile.read(content_length)
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+                text = data.get('text', '')
+                cursor = int(data.get('cursor', len(text)))
+                if server.on_sync_text:
+                    server.on_sync_text(text, cursor)
+                self._send_json(200, {'status': 'ok'})
+            except Exception as e:
+                self._send_json(400, {'status': 'error', 'message': str(e)})
+
+        # 3b. Reset synchronization state
+        elif self.path == '/api/reset_sync':
+            if hasattr(server, 'on_reset_sync') and server.on_reset_sync:
+                server.on_reset_sync()
+            self._send_json(200, {'status': 'ok'})
+
+        # 4. Batch paste text
+        elif self.path == '/api/paste_text':
             body_bytes = self.rfile.read(content_length)
             try:
                 data = json.loads(body_bytes.decode('utf-8'))
@@ -706,6 +1148,47 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._send_json(400, {'status': 'error', 'message': str(e)})
 
+        # 5. Live input character/text
+        elif self.path == '/api/live_input':
+            body_bytes = self.rfile.read(content_length)
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+                text = data.get('text', '')
+                if text:
+                    if server.on_live_input:
+                        server.on_live_input(text)
+                    elif server.on_paste_text:
+                        server.on_paste_text(text)
+                self._send_json(200, {'status': 'ok'})
+            except Exception as e:
+                self._send_json(400, {'status': 'error', 'message': str(e)})
+
+        # 6. Move cursor delta
+        elif self.path == '/api/move_cursor':
+            body_bytes = self.rfile.read(content_length)
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+                delta = int(data.get('delta', 0))
+                if delta != 0 and server.on_move_cursor:
+                    server.on_move_cursor(delta)
+                self._send_json(200, {'status': 'ok'})
+            except Exception as e:
+                self._send_json(400, {'status': 'error', 'message': str(e)})
+
+        # 7. Send special key (left, right, up, down, backspace, enter)
+        elif self.path == '/api/send_key':
+            body_bytes = self.rfile.read(content_length)
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+                key = data.get('key', '')
+                count = int(data.get('count', 1))
+                if key and server.on_special_key:
+                    server.on_special_key(key, count=count)
+                self._send_json(200, {'status': 'ok'})
+            except Exception as e:
+                self._send_json(400, {'status': 'error', 'message': str(e)})
+
+        # 8. Audio transcription
         elif self.path == '/api/transcribe_audio':
             audio_bytes = self.rfile.read(content_length)
             content_type = self.headers.get('Content-Type', 'audio/webm')
@@ -722,6 +1205,7 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
 
             self._send_json(200, {'status': 'ok', 'text': text})
 
+        # 9. Play sound
         elif self.path == '/api/sound':
             body_bytes = self.rfile.read(content_length)
             try:
@@ -737,13 +1221,32 @@ class PhoneRequestHandler(BaseHTTPRequestHandler):
 
 
 class PhoneServer:
-    def __init__(self, http_port=8765, https_port=8766, on_paste_text=None, on_special_key=None, on_transcribe_audio=None, on_play_sound=None):
+    def __init__(
+        self,
+        http_port=8765,
+        https_port=8766,
+        on_paste_text=None,
+        on_special_key=None,
+        on_transcribe_audio=None,
+        on_play_sound=None,
+        on_live_input=None,
+        on_move_cursor=None,
+        on_sync_text=None,
+        on_reset_sync=None,
+        password=""
+    ):
         self.http_port = http_port
         self.https_port = https_port
         self.on_paste_text = on_paste_text
         self.on_special_key = on_special_key
         self.on_transcribe_audio = on_transcribe_audio
         self.on_play_sound = on_play_sound
+        self.on_live_input = on_live_input
+        self.on_move_cursor = on_move_cursor
+        self.on_sync_text = on_sync_text
+        self.on_reset_sync = on_reset_sync
+        self.password = (password or "").strip()
+        self.valid_tokens = set()
 
         self.local_ip = get_local_ip()
         self.http_server = None
@@ -751,6 +1254,28 @@ class PhoneServer:
         self.http_thread = None
         self.https_thread = None
         self.is_running = False
+        self.tunnel_manager = None
+
+    def set_password(self, new_password: str):
+        self.password = (new_password or "").strip()
+        self.valid_tokens.clear()
+        logging.info("Phone access password updated.")
+
+    def generate_auth_token(self) -> str:
+        token = secrets.token_hex(16)
+        self.valid_tokens.add(token)
+        return token
+
+    def check_auth_header(self, headers) -> bool:
+        if not self.password:
+            return True
+        auth_hdr = headers.get('Authorization', '')
+        token = ""
+        if auth_hdr.startswith('Bearer '):
+            token = auth_hdr[7:].strip()
+        if not token:
+            token = headers.get('X-Auth-Token', '').strip()
+        return token in self.valid_tokens
 
     def start(self):
         if self.is_running:
@@ -850,4 +1375,3 @@ class PhoneServer:
 
     def get_https_url(self):
         return f"https://{self.local_ip}:{self.https_port}"
-

@@ -6,6 +6,7 @@ from pathlib import Path
 import qrcode
 from PIL import Image, ImageTk
 import pyperclip
+from config import load_config, save_config
 
 def get_asset_path(filename):
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -42,12 +43,12 @@ class PhoneQRDialog(tk.Toplevel):
         self.is_tunnel_connecting = (self.cloudflare_url is None)
 
         self.title("Connect Phone as Microphone")
-        self.geometry("480x620")
+        self.geometry("490x670")
         self.resizable(False, False)
 
         # Center on screen
         self.update_idletasks()
-        w, h = 480, 620
+        w, h = 490, 670
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
         x = (sw - w) // 2
@@ -140,6 +141,39 @@ class PhoneQRDialog(tk.Toplevel):
         )
         self.btn_mode_wifi.pack(side="left")
 
+        # Password setting box
+        pwd_card = ttk.Frame(container)
+        pwd_card.pack(anchor="center", fill="x", pady=(0, 8))
+
+        pwd_row = ttk.Frame(pwd_card)
+        pwd_row.pack(anchor="center")
+
+        lbl_p = ttk.Label(pwd_row, text="🔒 PIN / Password:", font=("Segoe UI", 8, "bold"))
+        lbl_p.pack(side="left", padx=(0, 6))
+
+        self.entry_pwd = ttk.Entry(pwd_row, width=12, show="*")
+        curr_pwd = self.phone_server.password if self.phone_server else ""
+        self.entry_pwd.insert(0, curr_pwd)
+        self.entry_pwd.pack(side="left", padx=(0, 4))
+
+        self.btn_eye = ttk.Button(pwd_row, text="👁", width=3, command=self._toggle_pwd_visibility)
+        self.btn_eye.pack(side="left", padx=(0, 4))
+
+        btn_save_pwd = ttk.Button(pwd_row, text="Save PIN", width=9, command=self._save_password)
+        btn_save_pwd.pack(side="left", padx=(0, 4))
+
+        btn_clear_pwd = ttk.Button(pwd_row, text="Clear", width=6, command=self._clear_password)
+        btn_clear_pwd.pack(side="left")
+
+        # Password status label
+        self.lbl_pwd_info = ttk.Label(
+            pwd_card,
+            text="🔒 Password Active (Phone must enter this PIN)" if curr_pwd else "🔓 Open Access (No password required)",
+            font=("Segoe UI", 8),
+            foreground="#b45309" if curr_pwd else "#15803d"
+        )
+        self.lbl_pwd_info.pack(anchor="center", pady=(3, 0))
+
         # QR Code Frame
         qr_frame = ttk.Frame(container, relief="solid", borderwidth=1)
         qr_frame.pack(anchor="center", pady=(0, 10))
@@ -182,6 +216,37 @@ class PhoneQRDialog(tk.Toplevel):
 
         btn_browser = ttk.Button(bottom_row, text="Open on PC", width=12, command=lambda: webbrowser.open(self.current_url))
         btn_browser.pack(side="right")
+
+    def _toggle_pwd_visibility(self):
+        if self.entry_pwd.cget("show") == "*":
+            self.entry_pwd.configure(show="")
+            self.btn_eye.configure(text="🔒")
+        else:
+            self.entry_pwd.configure(show="*")
+            self.btn_eye.configure(text="👁")
+
+    def _save_password(self):
+        new_pwd = self.entry_pwd.get().strip()
+        cfg = load_config()
+        cfg["phone_password"] = new_pwd
+        save_config(cfg)
+        if self.phone_server:
+            self.phone_server.set_password(new_pwd)
+
+        if new_pwd:
+            self.lbl_pwd_info.configure(
+                text="🔒 Password Active! (Phone must enter this PIN)",
+                foreground="#b45309"
+            )
+        else:
+            self.lbl_pwd_info.configure(
+                text="🔓 Open Access (No password required)",
+                foreground="#15803d"
+            )
+
+    def _clear_password(self):
+        self.entry_pwd.delete(0, "end")
+        self._save_password()
 
     def _set_mode(self, mode):
         self.mode_var.set(mode)

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('C:/Users/Nothing/.gemini/antigravity/scratch/voice_typer/assets', 'assets')]
+datas = [('C:/Voice-Typer/assets', 'assets')]
 binaries = []
 hiddenimports = ['phone_server', 'phone_ui', 'tunnel']
 tmp_ret = collect_all('sounddevice')
@@ -50,5 +50,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:/Users/Nothing/.gemini/antigravity/scratch/voice_typer/assets/icon.ico'],
+    icon=['C:/Voice-Typer/assets/icon.ico'],
 )

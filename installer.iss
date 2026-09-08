@@ -1,7 +1,8 @@
 ; Inno Setup Script for Voice Typer
 #define MyAppName "Voice Typer"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.0.0"
 #define MyAppPublisher "Voice Typer"
+#define MyAppURL "https://github.com/mamun250/Voice-Typer"
 #define MyAppExeName "VoiceTyper.exe"
 
 [Setup]
@@ -9,10 +10,14 @@ AppId={{D9A83F45-8B2E-4E6B-9B21-09C34A99F412}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\VoiceTyper
-DisableProgramGroupPage=yes
+DisableDirPage=no
+DisableProgramGroupPage=no
 DefaultGroupName={#MyAppName}
-OutputDir=C:\Users\Nothing\Desktop
+OutputDir=dist
 OutputBaseFilename=VoiceTyper_Setup
 SetupIconFile=assets\icon.ico
 Compression=lzma2/max
@@ -28,12 +33,13 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "startupicon"; Description: "Launch Voice Typer on Windows startup"; GroupDescription: "Windows Integration:"
+Name: "startupicon"; Description: "Launch Voice Typer automatically on Windows startup"; GroupDescription: "Windows Integration:"
 
 [Files]
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\config.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
-Source: "dist\.env"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+Source: ".env.example"; DestDir: "{app}"; DestName: ".env"; Flags: ignoreversion onlyifdoesntexist
+Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

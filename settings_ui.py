@@ -42,12 +42,12 @@ class OptionsDialog(tk.Toplevel):
         self.config = load_config()
 
         self.title("Options")
-        self.geometry("480x410")
+        self.geometry("490x440")
         self.resizable(False, False)
 
         # Center on screen
         self.update_idletasks()
-        w, h = 480, 410
+        w, h = 490, 440
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
         x = (sw - w) // 2
@@ -90,12 +90,17 @@ class OptionsDialog(tk.Toplevel):
         self.notebook.add(self.tab_audio, text="Audio")
         self._build_audio_tab()
 
-        # Tab 3: Hotkeys
+        # Tab 3: Phone Link & Security
+        self.tab_phone = ttk.Frame(self.notebook, padding=14)
+        self.notebook.add(self.tab_phone, text="Phone Link")
+        self._build_phone_tab()
+
+        # Tab 4: Hotkeys
         self.tab_hotkeys = ttk.Frame(self.notebook, padding=14)
         self.notebook.add(self.tab_hotkeys, text="Hotkeys")
         self._build_hotkeys_tab()
 
-        # Tab 4: API Key
+        # Tab 5: API Key
         self.tab_api = ttk.Frame(self.notebook, padding=14)
         self.notebook.add(self.tab_api, text="API Key")
         self._build_api_tab()
@@ -198,6 +203,57 @@ class OptionsDialog(tk.Toplevel):
     def _open_phone_qr(self):
         if self.on_open_phone_qr:
             self.on_open_phone_qr()
+
+    def _build_phone_tab(self):
+        lbl_title = ttk.Label(self.tab_phone, text="Connect Phone as Remote Microphone / Keyboard", font=("Segoe UI", 9, "bold"))
+        lbl_title.pack(anchor="w", pady=(2, 6))
+
+        lbl_desc = ttk.Label(
+            self.tab_phone,
+            text="Scan the QR code to speak via phone, type live into PC, and navigate cursor remotely.",
+            wraplength=430,
+            foreground="#555555"
+        )
+        lbl_desc.pack(anchor="w", pady=(0, 12))
+
+        # Password Protection section
+        lbl_pwd = ttk.Label(self.tab_phone, text="Phone Access Password (Optional):", font=("Segoe UI", 9, "bold"))
+        lbl_pwd.pack(anchor="w", pady=(0, 4))
+
+        lbl_pwd_info = ttk.Label(
+            self.tab_phone,
+            text="Set a PIN or password. If set, any device scanning the QR code or opening the link must enter this password to connect. Leave blank for open access.",
+            wraplength=430,
+            foreground="#666666"
+        )
+        lbl_pwd_info.pack(anchor="w", pady=(0, 6))
+
+        pwd_row = ttk.Frame(self.tab_phone)
+        pwd_row.pack(fill="x", pady=(0, 10))
+
+        self.entry_phone_pwd = ttk.Entry(pwd_row, show="*", width=28)
+        self.entry_phone_pwd.pack(side="left", padx=(0, 6))
+
+        self.btn_show_pwd = ttk.Button(pwd_row, text="Show", width=6, command=self._toggle_pwd_visibility)
+        self.btn_show_pwd.pack(side="left")
+
+        sep = ttk.Separator(self.tab_phone, orient="horizontal")
+        sep.pack(fill="x", pady=(8, 12))
+
+        btn_qr = ttk.Button(
+            self.tab_phone,
+            text="📱 Open Phone QR Code & Connect Window...",
+            command=self._open_phone_qr
+        )
+        btn_qr.pack(anchor="w")
+
+    def _toggle_pwd_visibility(self):
+        if self.entry_phone_pwd.cget("show") == "*":
+            self.entry_phone_pwd.configure(show="")
+            self.btn_show_pwd.configure(text="Hide")
+        else:
+            self.entry_phone_pwd.configure(show="*")
+            self.btn_show_pwd.configure(text="Show")
 
     def _build_hotkeys_tab(self):
         lbl_hk = ttk.Label(self.tab_hotkeys, text="Voice Typing Shortcut:")
@@ -315,6 +371,10 @@ class OptionsDialog(tk.Toplevel):
         saved_hk = self.config.get("primary_hotkey", "F8 (Default)")
         self.combo_hotkey.set(saved_hk)
 
+        # Phone tab
+        self.entry_phone_pwd.delete(0, "end")
+        self.entry_phone_pwd.insert(0, self.config.get("phone_password", ""))
+
         # API tab
         self.entry_api.delete(0, "end")
         self.entry_api.insert(0, self.config.get("gemini_api_key", ""))
@@ -427,6 +487,9 @@ class OptionsDialog(tk.Toplevel):
             autostart.enable_autostart()
         else:
             autostart.disable_autostart()
+
+        # 6. Phone password
+        self.config["phone_password"] = self.entry_phone_pwd.get().strip()
 
         save_config(self.config)
 

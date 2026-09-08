@@ -46,7 +46,7 @@ def get_cloudflared_path() -> Path:
 def ensure_cloudflared(progress_callback=None) -> bool:
     """Ensures cloudflared.exe exists, downloading if necessary."""
     target = get_cloudflared_path()
-    if target.exists() and target.stat().st_size > 1000000:
+    if target.exists() and target.stat().st_size > 25000000:
         return True
 
     target.parent.mkdir(parents=True, exist_ok=True)

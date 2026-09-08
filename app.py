@@ -38,7 +38,7 @@ from recorder import (
     play_startup_chime
 )
 from transcriber import GeminiTranscriber
-from paste_engine import paste_text
+from paste_engine import paste_text, type_live_text, move_cursor_delta, send_key, apply_text_diff
 from tray import TrayManager
 from settings_ui import show_settings_window
 from phone_server import PhoneServer
@@ -76,6 +76,9 @@ class VoiceTyperApp:
 
         self._apply_config(self.config)
 
+        self.synced_text = ""
+        self.synced_cursor = 0
+
         # Phone Server for Phone-as-Mic
         self.phone_server = PhoneServer(
             http_port=8765,
@@ -83,7 +86,12 @@ class VoiceTyperApp:
             on_paste_text=self._on_phone_paste_text,
             on_special_key=self._on_phone_special_key,
             on_transcribe_audio=self._on_phone_transcribe_audio,
-            on_play_sound=self._on_phone_play_sound
+            on_play_sound=self._on_phone_play_sound,
+            on_live_input=self._on_phone_live_input,
+            on_move_cursor=self._on_phone_move_cursor,
+            on_sync_text=self._on_phone_sync_text,
+            on_reset_sync=self._on_phone_reset_sync,
+            password=self.config.get("phone_password", "")
         )
         self.phone_server.start()
 
@@ -122,25 +130,45 @@ class VoiceTyperApp:
     def _show_phone_qr_on_main_thread(self):
         show_phone_qr_window(parent=self.root, phone_server=self.phone_server)
 
+    def _on_phone_reset_sync(self):
+        self.synced_text = ""
+        self.synced_cursor = 0
+        logging.info("[Phone] Synced text state reset.")
+
     def _on_phone_paste_text(self, text: str):
         if self.tray.is_paused or not text:
             return
         logging.info(f"[Phone] Received text: '{text}'")
         paste_text(text)
+        self.synced_text = ""
+        self.synced_cursor = 0
         if self.beep_enabled:
             play_paste_success_sound()
 
-    def _on_phone_special_key(self, key: str):
+    def _on_phone_sync_text(self, text: str, cursor: int):
         if self.tray.is_paused:
             return
-        if key == 'enter':
-            user32.keybd_event(0x0D, 0, 0, 0)
-            time.sleep(0.02)
-            user32.keybd_event(0x0D, 0, 0x0002, 0)
-        elif key == 'backspace':
-            user32.keybd_event(0x08, 0, 0, 0)
-            time.sleep(0.02)
-            user32.keybd_event(0x08, 0, 0x0002, 0)
+        self.synced_text, self.synced_cursor = apply_text_diff(
+            self.synced_text,
+            self.synced_cursor,
+            text,
+            cursor
+        )
+
+    def _on_phone_live_input(self, text: str):
+        if self.tray.is_paused or not text:
+            return
+        type_live_text(text)
+
+    def _on_phone_move_cursor(self, delta: int):
+        if self.tray.is_paused or delta == 0:
+            return
+        move_cursor_delta(delta)
+
+    def _on_phone_special_key(self, key: str, count: int = 1):
+        if self.tray.is_paused:
+            return
+        send_key(key, count=count)
 
     def _on_phone_transcribe_audio(self, audio_bytes: bytes, mime_type: str) -> str:
         if self.tray.is_paused or not audio_bytes:
@@ -169,6 +197,8 @@ class VoiceTyperApp:
     def on_settings_changed(self, new_cfg):
         logging.info("Settings updated by user.")
         self._apply_config(new_cfg)
+        if hasattr(self, 'phone_server') and self.phone_server:
+            self.phone_server.set_password(new_cfg.get("phone_password", ""))
         self._restart_hotkey_listener()
         self.tray.update_menu()
 
